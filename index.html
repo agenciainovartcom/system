@@ -1,0 +1,57 @@
+// TESTE DE CONEXÃO SIMPLES
+function checkAPIConnection() {
+  fetch('/api/os?test=true')
+    .then(response => response.json())
+    .then(data => {
+      if(data.connected) {
+        document.getElementById('dbStatus').innerHTML = '🟢 PostgreSQL';
+        document.getElementById('dbStatus').style.color = '#22c55e';
+        console.log('✅ Conectado ao PostgreSQL');
+      } else {
+        throw new Error(data.error);
+      }
+    })
+    .catch(error => {
+      document.getElementById('dbStatus').innerHTML = '💾 localStorage';
+      document.getElementById('dbStatus').style.color = '#666';
+      console.log('❌ Erro:', error);
+    });
+}
+
+// SALVAR OS - VERSÃO SIMPLIFICADA
+function saveOS(){
+  if(!validateForm()) return;
+  
+  var osNum = document.getElementById('osNumber').value || generateOSNumber();
+  
+  // Dados MÍNIMOS para teste
+  var dbData = {
+    os_number: osNum,
+    entry_date: document.getElementById('entryDate').value,
+    client_name: document.getElementById('clientName').value,
+    phone: document.getElementById('phone').value,
+    brand: document.getElementById('brandSelect').value,
+    model: document.getElementById('model').value,
+    service: document.getElementById('service').value,
+    problem: document.getElementById('problem').value
+  };
+  
+  fetch('/api/os', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(dbData)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if(result.success) {
+      toast('OS '+osNum+' salva no PostgreSQL!','success');
+      document.getElementById('osNumber').value=osNum;
+    } else {
+      toast('Erro: '+result.error,'error');
+    }
+  })
+  .catch(error => {
+    toast('Erro de conexão','error');
+    console.error(error);
+  });
+}
