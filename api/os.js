@@ -2,23 +2,27 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.SUPABASE_DB_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
+  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // HEALTH CHECK
-  if (req.url === '/api/os/health' || req.url === '/api/os?test=true') {
+  // HEALTH CHECK - /api/os/health
+  if (req.url === '/api/os/health' || req.url.includes('health')) {
     try {
       const result = await pool.query('SELECT NOW()');
-      return res.json({ 
+      return res.status(200).json({ 
         status: 'connected',
         database: 'PostgreSQL',
         timestamp: result.rows[0].now 
@@ -31,7 +35,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST - CRIAR OS
+  // POST - CREATE OS
   if (req.method === 'POST') {
     try {
       const d = req.body;
@@ -54,13 +58,13 @@ export default async function handler(req, res) {
       
       const result = await pool.query(query, values);
       
-      return res.json({ 
+      return res.status(201).json({ 
         success: true,
         data: result.rows[0]
       });
       
     } catch (error) {
-      console.error('Erro ao salvar:', error);
+      console.error('Database error:', error);
       return res.status(500).json({ 
         success: false,
         error: error.message 
@@ -68,15 +72,23 @@ export default async function handler(req, res) {
     }
   }
 
-  // GET - LISTAR OS
+  // GET - LIST OS
   if (req.method === 'GET') {
     try {
       const result = await pool.query(
         'SELECT * FROM ordens_servico ORDER BY id DESC LIMIT 100'
       );
-      return res.json(result.rows);
+      return res.status(200).json(result.rows);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Database error:', error);
+      return res.status(500).json({ 
+        error: error.message 
+      });
     }
   }
-}
+
+  // Default response
+  return res.status(405).json({ 
+    error: 'Method not allowed' 
+  });
+};
