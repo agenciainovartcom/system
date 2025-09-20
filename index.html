@@ -1,41 +1,566 @@
-// TESTE DE CONEXÃO SIMPLES
-function checkAPIConnection() {
-  fetch('/api/os?test=true')
-    .then(response => response.json())
-    .then(data => {
-      if(data.connected) {
-        document.getElementById('dbStatus').innerHTML = '🟢 PostgreSQL';
-        document.getElementById('dbStatus').style.color = '#22c55e';
-        console.log('✅ Conectado ao PostgreSQL');
-      } else {
-        throw new Error(data.error);
-      }
-    })
-    .catch(error => {
-      document.getElementById('dbStatus').innerHTML = '💾 localStorage';
-      document.getElementById('dbStatus').style.color = '#666';
-      console.log('❌ Erro:', error);
-    });
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>InovartOS • Sistema de Ordem de Serviço</title>
+<style>
+  :root {
+    --red: #e30613;
+    --black: #000;
+    --paper: #fff;
+    --ink: #111;
+    --muted: #666;
+    --gray: #f5f5f5;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --border-radius: 6px;
+    --transition: all 0.3s ease;
+  }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { margin: 0; background: var(--gray); color: var(--ink); font: 14px/1.35 Arial, Helvetica, sans-serif; transition: var(--transition); }
+  .wrap { max-width: 930px; margin: 18px auto; background: var(--paper); border: 3px solid var(--black); position: relative; padding-bottom: 28px; border-radius: var(--border-radius); transition: var(--transition); }
+  
+  /* CABEÇALHO - MAIS CLEAN */
+  .hdr { display: block; border-bottom: 0; padding: 15px 20px 10px; }
+  .brand { height: 80px; display: flex; align-items: center; justify-content: center; }
+  .brand-box { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+  .reiscell-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
+  .logo-main { font-size: 32px; font-weight: 900; line-height: 1; margin-bottom: 2px; letter-spacing: 1px; }
+  .logo-reis { color: var(--black); }
+  .logo-cell { color: var(--red); transition: all 0.3s ease; }
+  .logo-subtitle { font-size: 12px; color: var(--muted); font-weight: 600; text-align: center; line-height: 1.2; letter-spacing: 0.5px; }
+
+  .bar { display: flex; align-items: center; justify-content: center; border-top: 2px solid var(--black); border-bottom: 2px solid var(--black); background: #efefef; margin-top: 5px; }
+  .bar h2 { margin: 0; padding: 8px 14px; font-size: 16px; letter-spacing: .5px; }
+
+  /* BUSCA - NOVO LAYOUT VERTICAL */
+  .search-section { padding: 10px; border-bottom: 2px solid var(--black); background: #f9f9f9; position: relative; }
+  .search-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .search-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; position: relative; }
+  .search-input { width: 100%; padding: 8px 12px; border: 2px solid #777; border-radius: 20px; transition: var(--transition); }
+  .search-input:focus { border-color: var(--red); outline: none; box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1); }
+  .search-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .search-btn { width: 100%; padding: 8px; border: 2px solid var(--black); background: var(--paper); font-weight: 700; cursor: pointer; border-radius: var(--border-radius); transition: var(--transition); white-space: nowrap; text-align: center; }
+  .search-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); background: var(--red); color: #fff; border-color: var(--red); }
+  
+  /* FORMULÁRIO */
+  .sheet { border-top: 0; }
+  .row { display: grid; grid-template-columns: repeat(12, 1fr); }
+  .cell { border-right: 1px solid var(--black); border-bottom: 1px solid var(--black); padding: 7px; }
+  .cell:last-child { border-right: 0; }
+  .lbl { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; }
+  .lbl.required::after { content: " *"; color: var(--red); font-weight: 900; }
+  input[type=text], input[type=date], textarea, select { width: 100%; padding: 8px 12px; border: 1px solid #777; border-radius: 4px; font-size: 14px; transition: var(--transition); }
+  input:focus, textarea:focus, select:focus { border-color: var(--red); outline: none; box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.1); }
+  input.error, textarea.error, select.error { border-color: #ef4444; background: #fef2f2; }
+  textarea { min-height: 70px; resize: vertical; }
+  .c-2 { grid-column: span 2; } .c-3 { grid-column: span 3; } .c-4 { grid-column: span 4; } .c-5 { grid-column: span 5; }
+  .c-6 { grid-column: span 6; } .c-7 { grid-column: span 7; } .c-8 { grid-column: span 8; } .c-9 { grid-column: span 9; } .c-12 { grid-column: span 12; }
+
+  /* SENHA PADRÃO */
+  .pattern { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .dot { width: 18px; height: 18px; border: 2px solid #999; border-radius: 50%; background: var(--paper); cursor: pointer; transition: var(--transition); }
+  .dot:hover { transform: scale(1.1); border-color: var(--red); }
+  .dot.active { background: var(--red); border-color: var(--red); transform: scale(1.1); }
+
+  /* AVARIAS */
+  .damage-wrap { padding: 8px; }
+  .damage-title { font-weight: 900; }
+  .damage-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 6px; }
+  .damage { height: 90px; border: 2px solid var(--black); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: var(--transition); }
+  .damage:hover { transform: scale(1.02); }
+  .damage::after { content: attr(data-label); position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; }
+  .damage.selected { outline: 4px solid rgba(227,6,19,.25); border-color: var(--red); }
+  .damage.selected::before { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 36px; color: var(--red); font-weight: 900; }
+  .shape-front, .shape-back { width: 50px; height: 78px; border: 2px solid #444; border-radius: 10px; position: relative; }
+  .shape-front::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 18px; height: 18px; border: 2px solid #777; border-radius: 50%; }
+  .shape-side { width: 12px; height: 78px; border: 2px solid #444; border-radius: 6px; }
+  .shape-top { width: 50px; height: 14px; border: 2px solid #444; border-radius: 6px; }
+
+  /* GARANTIA */
+  .warranty { padding: 8px; border-top: 2px solid var(--black); border-bottom: 2px solid var(--black); }
+  .w-card { border: 2px solid var(--black); border-radius: 16px; padding: 10px; }
+  .w-title { font-weight: 900; color: var(--black); margin-bottom: 6px; }
+  .w-emph { display: inline-block; background: var(--black); color: #fff; padding: 2px 6px; border-radius: 4px; }
+
+  /* ASSINATURAS */
+  .sign-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 8px 16px; }
+  .sign-box { border-top: 1px solid var(--black); padding-top: 20px; text-align: center; min-height: 60px; }
+
+  /* BOTÕES */
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; padding: 10px; border-top: 2px solid var(--black); background: #fafafa; }
+  .btn { border: 2px solid var(--black); background: var(--paper); padding: 8px 14px; font-weight: 800; cursor: pointer; border-radius: var(--border-radius); transition: var(--transition); }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.secondary { background: #666; border-color: #666; color: #fff; }
+
+  /* MODAL */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 10000; }
+  .modal-content { background: var(--paper); border: 3px solid var(--black); border-radius: 8px; padding: 20px; max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--black); padding-bottom: 10px; }
+  .modal-title { font-weight: 900; font-size: 18px; }
+  .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; font-weight: 900; color: #666; }
+  .close-btn:hover { color: var(--red); }
+  .form-group { margin-bottom: 15px; }
+  .form-group label { display: block; font-weight: 700; margin-bottom: 5px; color: #333; }
+  .form-group input { width: 100%; padding: 8px; border: 2px solid #777; border-radius: 4px; font-size: 14px; }
+
+  /* TOAST */
+  .toast { position: fixed; right: 14px; top: 14px; background: var(--paper); color: var(--ink); padding: 12px 16px; border: 2px solid var(--black); font-weight: 800; z-index: 9999; border-radius: 6px; animation: slideIn .3s ease; }
+  .toast.success { border-left: 4px solid var(--success); }
+  .toast.error { border-left: 4px solid #ef4444; }
+  .toast.warning { border-left: 4px solid var(--warning); }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* Versão do sistema */
+  .version-tag { position: absolute; bottom: 4px; right: 6px; font-size: 10px; color: var(--muted); font-weight: 700; }
+
+  /* Responsividade */
+  @media (max-width: 768px) {
+    .wrap { margin: 10px; border-width: 2px; }
+    .hdr { padding: 10px 15px 5px; }
+    .brand { height: 70px; }
+    .logo-main { font-size: 26px; }
+    .logo-subtitle { font-size: 11px; }
+    .search-grid { grid-template-columns: 1fr; }
+    .search-row { grid-template-columns: 1fr; }
+    .search-buttons { grid-template-columns: 1fr 1fr; }
+    .row { grid-template-columns: 1fr; }
+    .cell { grid-column: span 1 !important; }
+    .damage-grid { grid-template-columns: repeat(3, 1fr); }
+    .sign-row { grid-template-columns: 1fr; }
+    .actions { justify-content: center; }
+  }
+
+  @media print {
+    .actions, .search-section, .version-tag, #dbStatus { display: none !important; }
+    .modal { display: none !important; }
+    body { background: #fff; margin: 0; padding: 0; font-size: 12px; line-height: 1.2; }
+    .wrap { max-width: none; margin: 0; border: 2px solid #000; box-shadow: none; }
+    .hdr { padding: 10px 15px 5px; }
+    .brand { height: 60px; }
+    .logo-main { font-size: 22px; }
+    .logo-subtitle { font-size: 10px; }
+    .bar h2 { font-size: 14px; padding: 4px 10px; }
+    .cell { padding: 5px; font-size: 11px; }
+    .lbl { font-size: 10px; margin-bottom: 2px; }
+    input, textarea, select { padding: 4px; font-size: 11px; border: 1px solid #333; }
+    textarea { min-height: 50px; }
+    .damage-grid { gap: 6px; }
+    .damage { height: 70px; }
+    .damage::after { font-size: 9px; bottom: 1px; }
+    .shape-front, .shape-back { width: 35px; height: 55px; }
+    .shape-side { width: 8px; height: 55px; }
+    .shape-top { width: 35px; height: 10px; }
+    .dot { width: 14px; height: 14px; }
+    .warranty { padding: 6px; }
+    .w-card { padding: 8px; }
+    .w-title { font-size: 11px; }
+    .w-emph { font-size: 10px; padding: 1px 4px; }
+    .sign-row { margin: 8px 6px 6px; gap: 8px; }
+    .sign-box { padding-top: 15px; font-size: 11px; min-height: 45px; }
+    .damage-title { font-size: 11px; }
+    .pattern { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Busca - NOVO LAYOUT VERTICAL -->
+  <div class="search-section">
+    <div class="search-grid">
+      <div class="search-row">
+        <input class="search-input" id="searchOS" type="text" placeholder="Digite o número da OS ou nome do cliente para buscar" />
+      </div>
+      <div class="search-buttons">
+        <button class="search-btn" onclick="searchOS()">🔍 Buscar por OS</button>
+        <button class="search-btn" onclick="searchByClient()">👤 Buscar por Cliente</button>
+        <button class="search-btn" onclick="loadLastOS()">📄 Última OS</button>
+        <button class="search-btn" onclick="newOS()">➕ Nova OS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cabeçalho - MAIS CLEAN -->
+  <div class="hdr print-avoid-break">
+    <div class="brand">
+      <div class="brand-box">
+        <div class="reiscell-logo">
+          <div class="logo-main"><span class="logo-reis">Inovart</span><span class="logo-cell">OS</span></div>
+          <div class="logo-subtitle">Sistema de Ordem de Serviço</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Barra ORDEM DE SERVIÇO -->
+  <div class="bar"><h2>ORDEM DE SERVIÇO</h2></div>
+
+  <!-- Formulário -->
+  <div class="sheet">
+    <!-- Linha 1 -->
+    <div class="row">
+      <div class="cell c-3"><div class="lbl required">Data de Entrada</div><input id="entryDate" type="date" /></div>
+      <div class="cell c-6"><div class="lbl required">Cliente</div><input id="clientName" type="text" placeholder="Nome completo" /></div>
+      <div class="cell c-3"><div class="lbl">OS Nº</div><input id="osNumber" type="text" placeholder="auto" readonly /></div>
+    </div>
+
+    <!-- Linha 2 -->
+    <div class="row">
+      <div class="cell c-4"><div class="lbl">CPF/CNPJ</div><input id="document" type="text" placeholder="000.000.000-00" /></div>
+      <div class="cell c-4"><div class="lbl">RG</div><input id="rg" type="text" placeholder="00.000.000-0" /></div>
+      <div class="cell c-4"><div class="lbl required">Telefone</div><input id="phone" type="text" placeholder="(00) 00000-0000" maxlength="15" /></div>
+    </div>
+
+    <!-- Linha 3 -->
+    <div class="row">
+      <div class="cell c-6"><div class="lbl">E-mail</div><input id="email" type="text" placeholder="cliente@email.com" /></div>
+      <div class="cell c-6"><div class="lbl">Endereço</div><input id="address" type="text" placeholder="Endereço completo" /></div>
+    </div>
+
+    <!-- Linha 4 -->
+    <div class="row">
+      <div class="cell c-4"><div class="lbl required">Marca do Aparelho</div>
+        <select id="brandSelect">
+          <option value="">Selecione...</option>
+          <option>Samsung</option><option>Apple</option><option>Motorola</option>
+          <option>Xiaomi</option><option>LG</option><option>Asus</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="cell c-4"><div class="lbl required">Modelo</div><input id="model" type="text" /></div>
+      <div class="cell c-4"><div class="lbl">Serial/IMEI</div><input id="serial" type="text" /></div>
+    </div>
+
+    <!-- Linha 5 -->
+    <div class="row">
+      <div class="cell c-6"><div class="lbl required">Serviço</div><input id="service" type="text" placeholder="Ex.: Troca de display" /></div>
+      <div class="cell c-6"><div class="lbl">Detalhes e Observações</div><input id="details" type="text" /></div>
+    </div>
+
+    <!-- Linha 6: Senhas -->
+    <div class="row">
+      <div class="cell c-6">
+        <div class="lbl">Senha de Deslizar</div>
+        <div class="pattern">
+          <div class="dot" data-pos="1"></div>
+          <div class="dot" data-pos="2"></div>
+          <div class="dot" data-pos="3"></div>
+          <div class="dot" data-pos="4"></div>
+          <div class="dot" data-pos="5"></div>
+          <div class="dot" data-pos="6"></div>
+          <div class="dot" data-pos="7"></div>
+          <div class="dot" data-pos="8"></div>
+          <div class="dot" data-pos="9"></div>
+        </div>
+      </div>
+      <div class="cell c-6"><div class="lbl">Senha Numérica</div><input id="numericPassword" type="text" placeholder="Digite apenas números" inputmode="numeric" maxlength="6" /></div>
+    </div>
+
+    <!-- Linha 7 -->
+    <div class="row">
+      <div class="cell c-9"><div class="lbl required">Problema Relatado pelo Cliente</div><textarea id="problem" placeholder="Descreva o problema"></textarea></div>
+      <div class="cell c-3"><div class="lbl">Valor R$</div><input id="value" type="text" placeholder="0,00" /></div>
+    </div>
+
+    <!-- Linha 8 -->
+    <div class="row print-avoid-break">
+      <div class="cell c-12"><div class="lbl">Laudo da Assistência e Observações</div><textarea id="report" placeholder="Uso interno"></textarea></div>
+    </div>
+
+    <!-- Linha 9: Avarias -->
+    <div class="row print-avoid-break">
+      <div class="cell c-12">
+        <div class="damage-wrap">
+          <div class="damage-title">• MARQUE OS LOCAIS COM AVARIAS VISÍVEIS</div>
+          <div class="damage-grid">
+            <div class="damage" data-damage="frente" data-label="Frente"><div class="shape-front"></div></div>
+            <div class="damage" data-damage="traseira" data-label="Traseira"><div class="shape-back"></div></div>
+            <div class="damage" data-damage="lateral1" data-label="Lateral 1"><div class="shape-side"></div></div>
+            <div class="damage" data-damage="lateral2" data-label="Lateral 2"><div class='shape-side'></div></div>
+            <div class="damage" data-damage="superior" data-label="Superior"><div class='shape-top'></div></div>
+            <div class="damage" data-damage="inferior" data-label="Inferior"><div class='shape-top'></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linha 10: Garantia -->
+    <div class="row print-avoid-break">
+      <div class="cell c-12 warranty">
+        <div class="w-card">
+          <div class="w-title">A Garantia não cobre danos causados pelo usuário tais como:</div>
+          <div class="w-emph">Touch e display arranhado ou quebrado e defeitos não relacionados ao conserto efetuado.</div>
+          <div style="margin-top:6px;font-size:13px">
+            <span id="warrantyText">Aparelho não retirado no prazo máximo de 90 dias, a contar desta data, autoriza a empresa a dispor do referido aparelho como melhor convier de acordo com o artigo 9078/1990 para cobertura do valor do conserto. A loja oferece garantia de 90 dias pelo reparo.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assinaturas -->
+    <div class="sign-row print-avoid-break">
+      <div class="sign-box">Dono do Aparelho — (Assinatura igual ao Documento de Identificação)</div>
+      <div class="sign-box">CPF ou RG</div>
+    </div>
+    <div style="padding:0 8px 10px 8px;text-align:right">
+      <span id="companyLocationDisplay">Sua Cidade - Estado</span>, <input type="date" id="signDate" style="border:0;border-bottom:1px solid #000;padding:2px 4px" />
+    </div>
+  </div>
+
+  <!-- Ações -->
+  <div class="actions print-avoid-break">
+    <button class="btn secondary" onclick="openSettings()">⚙️ Configurações</button>
+    <button class="btn" onclick="clearForm()">Limpar</button>
+    <button class="btn primary" onclick="saveOS()">Salvar OS</button>
+    <button class="btn" onclick="handlePrint()">Imprimir</button>
+    <button class="btn" onclick="exportBackup()">Exportar</button>
+    <label class="btn" for="importFile">Importar</label>
+    <input id="importFile" type="file" accept="application/json" style="display:none" />
+  </div>
+
+  <div class="version-tag">v1.2.0</div>
+  <div id="dbStatus" style="position: absolute; bottom: 4px; left: 6px; font-size: 10px; color: var(--muted); font-weight: 700;">
+    💾 localStorage
+  </div>
+</div>
+
+<!-- Modal de Configurações -->
+<div class="modal" id="settingsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">⚙️ Configurações do Sistema</h3>
+      <button class="close-btn" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="form-group"><label>Nome da Empresa:</label><input id="companyName" type="text" placeholder="Nome da sua empresa"></div>
+    <div class="form-group"><label>Subtítulo:</label><input id="companySubtitle" type="text" placeholder="Slogan ou especialidade"></div>
+    <div class="form-group"><label>Endereço:</label><input id="companyAddress" type="text" placeholder="Endereço completo"></div>
+    <div class="form-group"><label>Telefones:</label><input id="companyPhones" type="text" placeholder="Telefones de contato" maxlength="50"></div>
+    <div class="form-group"><label>Cidade/Estado:</label><input id="companyLocation" type="text" placeholder="Cidade - Estado"></div>
+    <div class="form-group">
+      <label>Dias de Garantia do Serviço:</label>
+      <input id="serviceWarranty" type="number" min="1" max="365" value="90">
+    </div>
+    <div class="form-group">
+      <label>Dias para Retirada do Aparelho:</label>
+      <input id="pickupDays" type="number" min="1" max="365" value="90">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn" onclick="closeSettings()">Cancelar</button>
+      <button class="btn primary" onclick="saveSettings()">Salvar Configurações</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Estado
+var pattern = [];
+var osCounter = parseInt(localStorage.getItem('osCounter') || '0');
+var osData = JSON.parse(localStorage.getItem('osData') || '{}');
+
+// Helpers
+function toast(msg, type){ 
+  var t=document.createElement('div'); 
+  t.className='toast '+(type||'info'); 
+  t.textContent=msg; 
+  document.body.appendChild(t); 
+  setTimeout(()=>t.remove(),3000); 
 }
 
-// SALVAR OS - VERSÃO SIMPLIFICADA
+function today(){ 
+  var date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0,10); 
+}
+
+function generateOSNumber(){ 
+  osCounter++; 
+  localStorage.setItem('osCounter', String(osCounter)); 
+  return 'OS'+String(osCounter).padStart(3,'0'); 
+}
+
+// Máscara telefone
+function formatPhone(v) {
+  v = v.replace(/\D/g, '');
+  if (v.length <= 10) {
+    v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+  } else {
+    v = v.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+  }
+  return v;
+}
+
+// Converter dados do frontend para formato do PostgreSQL
+function convertToDBFormat(data) {
+  return {
+    os_number: data.osNumber,
+    entry_date: data.entryDate,
+    client_name: data.clientName,
+    document: data.document || null,
+    rg: data.rg || null,
+    phone: data.phone,
+    email: data.email || null,
+    address: data.address || null,
+    brand: data.brand,
+    model: data.model,
+    serial: data.serial || null,
+    service: data.service,
+    details: data.details || null,
+    problem: data.problem,
+    pattern: data.pattern || null,
+    numeric_password: data.numericPassword || null,
+    value: data.value ? parseFloat(data.value.replace(',', '.')) : null,
+    report: data.report || null,
+    damages: Array.isArray(data.damages) ? data.damages.join(',') : data.damages || null,
+    sign_date: data.signDate || null
+  };
+}
+
+// Converter dados do PostgreSQL para formato do frontend
+function convertFromDBFormat(dbData) {
+  return {
+    osNumber: dbData.os_number,
+    entryDate: dbData.entry_date,
+    clientName: dbData.client_name,
+    document: dbData.document || '',
+    rg: dbData.rg || '',
+    phone: dbData.phone,
+    email: dbData.email || '',
+    address: dbData.address || '',
+    brand: dbData.brand,
+    model: dbData.model,
+    serial: dbData.serial || '',
+    service: dbData.service,
+    details: dbData.details || '',
+    pattern: dbData.pattern || '',
+    numericPassword: dbData.numeric_password || '',
+    problem: dbData.problem,
+    value: dbData.value ? String(dbData.value).replace('.', ',') : '',
+    report: dbData.report || '',
+    damages: dbData.damages ? dbData.damages.split(',') : [],
+    signDate: dbData.sign_date || ''
+  };
+}
+
+// FUNÇÕES DE BUSCA TEMPORARIAMENTE SIMPLIFICADAS
+function searchOS(){
+  toast('Função de busca será implementada em breve','warning');
+}
+
+function searchByClient(){
+  toast('Função de busca por cliente será implementada em breve','warning');
+}
+
+function loadLastOS(){ 
+  toast('Função de carregar última OS será implementada em breve','warning');
+}
+
+function newOS(){ 
+  if (confirm('Tem certeza que deseja criar uma nova OS? Quaisquer alterações não salvas serão perdidas.')) {
+    clearForm(); 
+    toast('Nova OS iniciada','success'); 
+  }
+}
+
+// Form core
+function clearForm(){
+  if (!confirm('Tem certeza que deseja limpar o formulário? Todos os dados não salvos serão perdidos.')) {
+    return;
+  }
+  
+  document.querySelectorAll('input[type=text], textarea, input[type=email]').forEach(i=>{i.value='';i.classList.remove('error')});
+  document.querySelectorAll('select').forEach(s=>{s.value='';s.classList.remove('error')});
+  var d=today();
+  document.getElementById('entryDate').value=d; 
+  document.getElementById('signDate').value=d; 
+  document.getElementById('osNumber').value='';
+  document.querySelectorAll('.dot').forEach(dot=>dot.classList.remove('active'));
+  document.querySelectorAll('.damage').forEach(dmg=>dmg.classList.remove('selected'));
+  pattern=[]; 
+  document.getElementById('searchOS').value='';
+}
+
+function validateForm(){
+  var errors=[]; 
+  document.querySelectorAll('.error').forEach(el=>el.classList.remove('error'));
+  
+  var req=[
+    {id:'entryDate',name:'Data de Entrada'},
+    {id:'clientName',name:'Nome do Cliente'},
+    {id:'phone',name:'Telefone'},
+    {id:'brandSelect',name:'Marca do Aparelho'},
+    {id:'model',name:'Modelo'},
+    {id:'service',name:'Serviço'},
+    {id:'problem',name:'Problema Relatado'}
+  ];
+  
+  req.forEach(f=>{
+    var el=document.getElementById(f.id);
+    var v=(el.value||'').trim(); 
+    if(!v){
+      errors.push(f.name+' é obrigatório'); 
+      el.classList.add('error');
+    }
+  });
+  
+  // Validação de telefone
+  var phoneValue = document.getElementById('phone').value.replace(/\D/g, '');
+  if (phoneValue && (phoneValue.length < 10 || phoneValue.length > 11)) {
+    errors.push('Telefone deve ter 10 ou 11 dígitos');
+    document.getElementById('phone').classList.add('error');
+  }
+  
+  var d1=document.getElementById('entryDate').value; 
+  var d2=document.getElementById('signDate').value; 
+  var td=today();
+  
+  // Não permitir datas futuras
+  if(d1 > td) {errors.push('Data de entrada não pode ser futura!'); document.getElementById('entryDate').classList.add('error');}
+  if(d2 > td) {errors.push('Data de assinatura não pode ser futura!'); document.getElementById('signDate').classList.add('error');}
+  
+  var num=document.getElementById('numericPassword').value.trim(); 
+  var hasPat=pattern.length>0;
+  if(num && hasPat){errors.push('Use apenas UM tipo de senha (numérica OU padrão)');}
+  
+  if(errors.length>0){toast(errors.join(' | '),'error'); return false;}
+  return true;
+}
+
 function saveOS(){
   if(!validateForm()) return;
   
   var osNum = document.getElementById('osNumber').value || generateOSNumber();
+  var damages = [];
+  document.querySelectorAll('.damage.selected').forEach(d=>damages.push(d.dataset.damage));
   
-  // Dados MÍNIMOS para teste
-  var dbData = {
-    os_number: osNum,
-    entry_date: document.getElementById('entryDate').value,
-    client_name: document.getElementById('clientName').value,
+  var data={
+    osNumber: osNum,
+    entryDate: document.getElementById('entryDate').value,
+    clientName: document.getElementById('clientName').value,
+    document: document.getElementById('document').value,
+    rg: document.getElementById('rg').value,
     phone: document.getElementById('phone').value,
+    email: document.getElementById('email').value,
+    address: document.getElementById('address').value,
     brand: document.getElementById('brandSelect').value,
     model: document.getElementById('model').value,
+    serial: document.getElementById('serial').value,
     service: document.getElementById('service').value,
-    problem: document.getElementById('problem').value
+    details: document.getElementById('details').value,
+    pattern: pattern.join(','),
+    numericPassword: document.getElementById('numericPassword').value,
+    problem: document.getElementById('problem').value,
+    value: document.getElementById('value').value,
+    report: document.getElementById('report').value,
+    damages: damages,
+    signDate: document.getElementById('signDate').value
   };
   
+  // Preparar dados para o PostgreSQL
+  var dbData = convertToDBFormat(data);
+  
+  // Enviar para o PostgreSQL via API
   fetch('/api/os', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -46,12 +571,249 @@ function saveOS(){
     if(result.success) {
       toast('OS '+osNum+' salva no PostgreSQL!','success');
       document.getElementById('osNumber').value=osNum;
+      
+      // Salva também no localStorage como backup
+      osData[osNum]=data;
+      localStorage.setItem('osData',JSON.stringify(osData));
+      localStorage.setItem('lastOSNumber',osNum);
     } else {
-      toast('Erro: '+result.error,'error');
+      toast('Erro ao salvar: '+(result.error || 'Erro desconhecido'),'error');
+      console.error('Erro do servidor:', result);
     }
   })
   .catch(error => {
-    toast('Erro de conexão','error');
-    console.error(error);
+    // Se falhar, salva no localStorage como fallback
+    osData[osNum]=data;
+    localStorage.setItem('osData',JSON.stringify(osData));
+    localStorage.setItem('lastOSNumber',osNum);
+    document.getElementById('osNumber').value=osNum;
+    
+    toast('Erro de conexão - OS salva localmente','warning');
+    console.error('Erro de conexão:', error);
   });
 }
+
+function loadOSData(data){
+  document.getElementById('osNumber').value=data.osNumber||'';
+  document.getElementById('entryDate').value=data.entryDate||'';
+  document.getElementById('clientName').value=data.clientName||'';
+  document.getElementById('document').value=data.document||'';
+  document.getElementById('rg').value=data.rg||'';
+  document.getElementById('phone').value=data.phone||'';
+  document.getElementById('email').value=data.email||'';
+  document.getElementById('address').value=data.address||'';
+  document.getElementById('brandSelect').value=data.brand||'';
+  document.getElementById('model').value=data.model||'';
+  document.getElementById('serial').value=data.serial||'';
+  document.getElementById('service').value=data.service||'';
+  document.getElementById('details').value=data.details||'';
+  document.getElementById('numericPassword').value=data.numericPassword||'';
+  document.getElementById('problem').value=data.problem||'';
+  document.getElementById('value').value=data.value||'';
+  document.getElementById('report').value=data.report||'';
+  document.getElementById('signDate').value=data.signDate||'';
+  
+  // Padrão
+  pattern=data.pattern?data.pattern.split(',').map(Number):[];
+  document.querySelectorAll('.dot').forEach(d=>{
+    if(pattern.includes(parseInt(d.dataset.pos))) d.classList.add('active');
+    else d.classList.remove('active');
+  });
+  
+  // Avarias
+  document.querySelectorAll('.damage').forEach(d=>d.classList.remove('selected'));
+  if(data.damages){
+    data.damages.forEach(dmg=>{
+      var el=document.querySelector('[data-damage="'+dmg+'"]');
+      if(el) el.classList.add('selected');
+    });
+  }
+}
+
+// Settings
+function openSettings(){
+  loadSettings();
+  document.getElementById('settingsModal').style.display='flex';
+}
+
+function closeSettings(){
+  document.getElementById('settingsModal').style.display='none';
+}
+
+function loadSettings(){
+  var settings = JSON.parse(localStorage.getItem('companySettings')||'{}');
+  document.getElementById('companyName').value=settings.name||'';
+  document.getElementById('companySubtitle').value=settings.subtitle||'';
+  document.getElementById('companyAddress').value=settings.address||'';
+  document.getElementById('companyPhones').value=settings.phones||'';
+  document.getElementById('companyLocation').value=settings.location||'Sua Cidade - Estado';
+  document.getElementById('serviceWarranty').value=settings.warranty||90;
+  document.getElementById('pickupDays').value=settings.pickup||90;
+}
+
+function saveSettings(){
+  var settings={
+    name: document.getElementById('companyName').value,
+    subtitle: document.getElementById('companySubtitle').value,
+    address: document.getElementById('companyAddress').value,
+    phones: document.getElementById('companyPhones').value,
+    location: document.getElementById('companyLocation').value,
+    warranty: document.getElementById('serviceWarranty').value,
+    pickup: document.getElementById('pickupDays').value
+  };
+  
+  localStorage.setItem('companySettings',JSON.stringify(settings));
+  applySettings();
+  closeSettings();
+  toast('Configurações salvas!','success');
+}
+
+function applySettings(){
+  var settings=JSON.parse(localStorage.getItem('companySettings')||'{}');
+  
+  // Atualizar logo
+  if(settings.name){
+    document.querySelector('.logo-reis').textContent=settings.name;
+  }
+  if(settings.subtitle){
+    document.querySelector('.logo-subtitle').textContent=settings.subtitle;
+  }
+  
+  // Atualizar localização
+  document.getElementById('companyLocationDisplay').textContent=settings.location||'Sua Cidade - Estado';
+  
+  // Atualizar texto de garantia
+  var warrantyText = 'Aparelho não retirado no prazo máximo de '+(settings.pickup||90)+' dias, a contar desta data, autoriza a empresa a dispor do referido aparelho como melhor convier de acordo com o artigo 9078/1990 para cobertura do valor do conserto. A loja oferece garantia de '+(settings.warranty||90)+' dias pelo reparo.';
+  document.getElementById('warrantyText').textContent=warrantyText;
+}
+
+// Print
+function handlePrint(){
+  window.print();
+}
+
+// Export/Import
+function exportBackup(){
+  // Por enquanto exporta só localStorage
+  var backup={
+    osData: osData,
+    osCounter: osCounter,
+    settings: JSON.parse(localStorage.getItem('companySettings')||'{}'),
+    source: 'localStorage'
+  };
+  
+  var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='backup_inovartos_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup exportado!','success');
+}
+
+document.getElementById('importFile').addEventListener('change',function(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var backup=JSON.parse(e.target.result);
+      if(confirm('Importar backup? Isso substituirá todos os dados atuais!')){
+        osData=backup.osData||{};
+        osCounter=backup.osCounter||0;
+        localStorage.setItem('osData',JSON.stringify(osData));
+        localStorage.setItem('osCounter',String(osCounter));
+        if(backup.settings){
+          localStorage.setItem('companySettings',JSON.stringify(backup.settings));
+          applySettings();
+        }
+        toast('Backup importado com sucesso!','success');
+      }
+    } catch(err){
+      toast('Erro ao importar arquivo!','error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+// Event Listeners
+document.querySelectorAll('.dot').forEach(dot=>{
+  dot.addEventListener('click',function(){
+    var pos=parseInt(this.dataset.pos);
+    if(this.classList.contains('active')){
+      this.classList.remove('active');
+      pattern=pattern.filter(p=>p!==pos);
+    } else {
+      this.classList.add('active');
+      pattern.push(pos);
+    }
+    pattern.sort((a,b)=>a-b);
+  });
+});
+
+document.querySelectorAll('.damage').forEach(dmg=>{
+  dmg.addEventListener('click',function(){
+    this.classList.toggle('selected');
+  });
+});
+
+document.getElementById('phone').addEventListener('input', function(e) {
+  e.target.value = formatPhone(e.target.value);
+});
+
+document.getElementById('value').addEventListener('input', function(e) {
+  var v = e.target.value.replace(/\D/g, '');
+  if (v) {
+    v = (parseInt(v) / 100).toFixed(2).replace('.', ',');
+  }
+  e.target.value = v;
+});
+
+document.getElementById('numericPassword').addEventListener('input', function(e) {
+  e.target.value = e.target.value.replace(/\D/g, '');
+});
+
+// FUNÇÃO DE VERIFICAÇÃO AJUSTADA
+function checkAPIConnection() {
+  fetch('/api/os/health')
+    .then(response => {
+      if(response.ok) {
+        return response.json();
+      }
+      throw new Error('API não disponível');
+    })
+    .then(data => {
+      if(data.status === 'connected') {
+        document.getElementById('dbStatus').innerHTML = '🟢 PostgreSQL';
+        document.getElementById('dbStatus').style.color = '#22c55e';
+        console.log('✅ Conectado ao PostgreSQL:', data);
+      } else {
+        throw new Error(data.error);
+      }
+    })
+    .catch(error => {
+      document.getElementById('dbStatus').innerHTML = '💾 localStorage';
+      document.getElementById('dbStatus').style.color = '#666';
+      console.log('⚠️ API não disponível:', error.message);
+    });
+}
+
+// Init
+document.addEventListener('DOMContentLoaded',function(){
+  var d=today();
+  document.getElementById('entryDate').value=d;
+  document.getElementById('signDate').value=d;
+  applySettings();
+  checkAPIConnection();
+  
+  // Info sobre sistema
+  console.log('%c✅ Sistema InovartOS v1.2.0', 'color: #22c55e; font-size: 16px; font-weight: bold');
+  console.log('%c📊 Sistema pronto para PostgreSQL', 'color: #3b82f6; font-size: 14px');
+  console.log('%cVerificando conexão com API...', 'color: #666');
+});
+</script>
+</body>
+</html>
