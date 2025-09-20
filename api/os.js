@@ -2,9 +2,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.SUPABASE_DB_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 module.exports = async (req, res) => {
@@ -16,23 +14,6 @@ module.exports = async (req, res) => {
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
-  }
-
-  // HEALTH CHECK - /api/os/health
-  if (req.url === '/api/os/health' || req.url.includes('health')) {
-    try {
-      const result = await pool.query('SELECT NOW()');
-      return res.status(200).json({ 
-        status: 'connected',
-        database: 'PostgreSQL',
-        timestamp: result.rows[0].now 
-      });
-    } catch (error) {
-      return res.status(500).json({ 
-        status: 'error',
-        error: error.message 
-      });
-    }
   }
 
   // POST - CREATE OS
